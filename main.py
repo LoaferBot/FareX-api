@@ -177,8 +177,8 @@ async def fetch_uber_estimates(
         }]
 
     prices = response.json().get("prices", [])
-    if not prices:
-        return [{"provider": "Uber", "product": "Unavailable", "error": "No products returned — check API region/scope"}]
+
+    # BUG 3 FIX: removed duplicate if-not-prices block; kept only one clear check
     if not prices:
         return [{
             "provider":    "Uber",
@@ -231,25 +231,28 @@ def fetch_ola_estimates(
         ("Ola Bike",   15,   4, 0.5, 1),
     ]
 
+    # BUG 1 FIX: results block was at module level (0 indentation).
+    # It must be inside the function (4-space indent), with the loop
+    # body at 8 spaces, and return AFTER the loop (not inside it).
+    results = []
+    for name, base, per_km, per_min, capacity in categories:
+        surge = round(random.choice(
+            [1.0, 1.0, 1.0, 1.2, 1.5]), 1)  # per category
+        raw_fare = base + (per_km * distance_km) + (per_min * duration_min)
+        fare = round(raw_fare * surge)
+        results.append({
+            "provider":    "Ola",
+            "product":     name,
+            "fare_min":    int(fare * 0.92),   # ±8% band
+            "fare_max":    int(fare * 1.08),
+            "currency":    "INR",
+            "eta_minutes": random.randint(3, 12),
+            "surge":       surge,
+            "deep_link":   _ola_deep_link(pickup_lat, pickup_lng, drop_lat, drop_lng),
+            "note":        "Estimated fare — Ola has no public API",
+        })
 
-results = []
-for name, base, per_km, per_min, capacity in categories:
-    surge = round(random.choice([1.0, 1.0, 1.0, 1.2, 1.5]), 1)  # per category
-    raw_fare = base + (per_km * distance_km) + (per_min * duration_min)
-    fare = round(raw_fare * surge)
-    results.append({
-        "provider":    "Ola",
-        "product":     name,
-        "fare_min":    int(fare * 0.92),   # ±8% band
-        "fare_max":    int(fare * 1.08),
-        "currency":    "INR",
-        "eta_minutes": random.randint(3, 12),
-        "surge":       surge,
-        "deep_link":   _ola_deep_link(pickup_lat, pickup_lng, drop_lat, drop_lng),
-        "note":        "Estimated fare — Ola has no public API",
-    })
-
-    return results
+    return results  # <-- now AFTER the loop, still inside the function
 
 # ---------------------------------------------------------------------------
 # 7. Rapido — mock estimate  (no public API available)
@@ -272,25 +275,26 @@ def fetch_rapido_estimates(
         ("Rapido Cab",   50, 11.0, 1.2),
     ]
 
+    # BUG 2 FIX: same indentation fix as fetch_ola_estimates above.
+    results = []
+    for name, base, per_km, per_min in categories:
+        surge = round(random.choice(
+            [1.0, 1.0, 1.0, 1.1, 1.3]), 1)  # per category
+        raw_fare = base + (per_km * distance_km) + (per_min * duration_min)
+        fare = round(raw_fare * surge)
+        results.append({
+            "provider":    "Rapido",
+            "product":     name,
+            "fare_min":    int(fare * 0.92),
+            "fare_max":    int(fare * 1.08),
+            "currency":    "INR",
+            "eta_minutes": random.randint(2, 10),
+            "surge":       surge,
+            "deep_link":   _rapido_deep_link(),
+            "note":        "Estimated fare — Rapido has no public API",
+        })
 
-results = []
-for name, base, per_km, per_min in categories:
-    surge = round(random.choice([1.0, 1.0, 1.0, 1.1, 1.3]), 1)  # per category
-    raw_fare = base + (per_km * distance_km) + (per_min * duration_min)
-    fare = round(raw_fare * surge)
-    results.append({
-        "provider":    "Rapido",
-        "product":     name,
-        "fare_min":    int(fare * 0.92),
-        "fare_max":    int(fare * 1.08),
-        "currency":    "INR",
-        "eta_minutes": random.randint(2, 10),
-        "surge":       surge,
-        "deep_link":   _rapido_deep_link(),
-        "note":        "Estimated fare — Rapido has no public API",
-    })
-
-    return results
+    return results  # <-- now AFTER the loop, still inside the function
 
 # ---------------------------------------------------------------------------
 # 8. Deep link helpers
